@@ -20,6 +20,7 @@ from Groups import *
 from random import randint
 from termcolor import colored
 from prettytable import PrettyTable
+from Chats import *
 
 ## The core url of GroupMe's API
 base_url = "https://api.groupme.com/v3"
@@ -89,6 +90,47 @@ def main():
 							print "Invalid input."
 					if response == 'no':
 						break
+		elif response == "4":
+                        chats=getChats(base_url+'/chats')
+                        for i in chats:
+                            print showChats(i)
+                        displayOptions()
+                elif response == "5":
+                    print "\nEnter the userID"
+                    while True:
+                        user_input=raw_input('> ')
+                        user_input=user_input.strip()
+
+                        if user_input=="menu":
+                            displayOptions()
+                            break
+                        elif user_input =="exit":
+                            return
+                        else:
+                            while True:
+                                user_id=user_input
+                                #try:
+                                getDM(base_url+'/direct_messages',user_id)
+                                r2 =messagePrompt(user_id)
+                                if r2 == None:
+                                    displayOptions()
+                                    break
+                                elif r2 == 'back':
+                                    break
+                                elif r2 =='exit':
+                                    return
+                                elif r2 == 'refresh':
+                                    getDM(base_url+'/direct_messages',user_id)
+                                elif r2:
+                                    sendDM(r2,user_id)
+                                #except:
+                                #    print "invalid input."
+                                #    user_input=raq_input('> ')
+                            if response=="no":
+                                break
+
+
+
 		elif response == "exit":
 			return
 		else:
@@ -99,6 +141,7 @@ def displayOptions():
 	print "1) View Joined Groups"
 	print "2) Send Message"
 	print "3) Chat with Group"
+	print "4) View chats"
 	print 'Type %s to quit' % colored("exit", 'red', attrs=['bold','blink'])
 	print "\n"
 
@@ -144,6 +187,16 @@ def findGroups():
 		titles.append(title)
 
 	return titles
+
+#def showChats():
+#        titles = []
+#        chats=getChats(base_url+'/chats')
+#        for chat in chats:
+#            name = chat.showName()
+#            conv_id=chat.getID()
+#            title = "DM: %s | %s " % (colored(name, 'green'), conv_id)
+#            titles.append(title)
+#        return titles
 
 def getGroups(base_url):
 	print "Fetching groups...\n"
@@ -193,6 +246,69 @@ def getGroups(base_url):
 
 	return Groups
 
+def getChats(base_url):
+    print "Fetching chats...\n"
+    req=requests.get(url=base_url+"?", params={'token':ACCESS_KEY})
+    print req.url
+
+    data=json.loads(req.content)
+
+    json_response= json.dumps(data, ensure_ascii=False, encoding="utf-8", separators=(',', ':'), indent=4)
+
+    try:
+        errors=data["meta"]["errors"]
+        if errors:
+            for error in errors:
+                if "UnauthoriezedError" in error:
+                    print colored("Please check you have loaded your Dev Key.", 'red')
+    except:
+        pass
+    responses =data["response"]
+    chats=[]
+    for resp in responses:
+	created_at=resp["created_at"]
+        updated_at=resp["updated_at"]
+        message_count=resp["messages_count"]
+        other_user_name=resp["other_user"]["name"]
+        other_user_id=resp["other_user"]["id"]
+        other_user_url=resp["other_user"]["avatar_url"]
+        other_user=User(other_user_name,other_user_id,other_user_url)
+        last_message=resp["last_message"]["text"]
+        last_sender=resp["last_message"]["name"]
+        newChat=Chat(created_at, updated_at, message_count, other_user,last_message,last_sender)
+        chats.append(newChat)
+    return chats
+
+def getDM(base_url,other_user_id):
+    print "Fetching dm...\n"
+    req=requests.get(url=base_url+"?", params={'token':ACCESS_KEY,'other_user_id':other_user_id})
+    data=json.loads(req.content)
+    responses=data['response']
+    dms=responses['direct_messages']
+    last5=dms[:5]
+    table=PrettyTable(["User","Message"])
+    for i in last5:
+        table.add_row([i["name"],i["text"]])
+    print table
+
+
+
+def sendDM(message,user_id):
+    url=base_url+'/direct_messages'
+    headers={"Content-Type":"application/json"}
+    s_guid=str(randint(0,1000))
+    try:
+        payload={"message":{"source_guid":s_guid,"recipient_id":user_id,"text":message,"attachements":[]}}
+
+        data=json.loads(requests.post(url=url,headers=headers, data=json.dumps(payload),params={'token':ACCESS_KEY}).content)
+        body=data["response"]
+        if body["message"]:
+            print "Message sent"
+    except:
+        print "Failed to send"
+
+
+
 def showGroups(group):
 	name = group.showName()
 	message_count = group.showMessageCount()
@@ -222,6 +338,21 @@ def showGroups(group):
 	print table
 
 	return dictCollection
+def showChats(chat):
+	name = chat.showName()
+	message_count=chat.showMessageCount()
+	id_ = chat.getID()
+        last_message=chat.showLastMessage()
+        last_sender=chat.showLastSender()
+
+	messageCount = colored("Message Count:", 'yellow')
+	ID = colored("ID:", 'yellow')
+
+	title= "%s | %s %s | %s %s |" %(colored(name, 'green'), messageCount, message_count, ID, id_)
+	table=PrettyTable([title])
+	table.align[title]='l'
+        table.add_row(["Last Message: %s: %s" % (colored(last_sender, 'green'), last_message)])
+	print table
 
 def fetchUsers(dictCollection):
 	users = []

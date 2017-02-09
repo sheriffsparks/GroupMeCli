@@ -1,6 +1,6 @@
-## 
-## User class. 
-##	Contains all of the information regarding Users. 
+##
+## User class.
+##	Contains all of the information regarding Users.
 ##
 
 class User:

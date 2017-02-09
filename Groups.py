@@ -1,6 +1,6 @@
-## 
-## Groups class. 
-##	Contains all of the information regarding Groups. 
+##
+## Groups class.
+##	Contains all of the information regarding Groups.
 ##
 
 class Group(object):
@@ -32,7 +32,7 @@ class Group(object):
 		user_id = self.users.getUserId()
 		image_url = self.users.getImageURL()
 
-		## Create list of dicts 
+		## Create list of dicts
 		dictCollection = []
 		for nickname, user_id, image_url in zip(nickname, user_id, image_url):
 			userDict = {}
@@ -40,7 +40,7 @@ class Group(object):
 			userDict['userId'] = user_id
 			userDict['imageUrl'] = image_url
 			dictCollection.append(userDict)
-		
+
 		return dictCollection
 
 	def numberOfMembers(self):
