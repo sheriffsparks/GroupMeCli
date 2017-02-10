@@ -96,6 +96,9 @@ def main():
                             print showChats(i)
                         displayOptions()
                 elif response == "5":
+                    chats=getChats(base_url+'/chats')
+                    for i in chats:
+                        print showChats(i)
                     print "\nEnter the userID"
                     while True:
                         user_input=raw_input('> ')
@@ -110,17 +113,29 @@ def main():
                             while True:
                                 user_id=user_input
                                 #try:
-                                getDM(base_url+'/direct_messages',user_id)
+                                chat=next((x for x in chats if x.getID()==user_id),None)
+                                if not chat:
+                                    print "invalid input"
+                                    print "Enter the UserID"
+                                    break
+                                getDM(base_url+'/direct_messages',chat)
                                 r2 =messagePrompt(user_id)
                                 if r2 == None:
                                     displayOptions()
                                     break
+                                elif r2 == 'like':
+                                    messageId = raw_input('Please enter messageID > ')
+                                    favoriteMessage(chat.getConvID(), messageId)
+                                elif r2 == 'unlike':
+                                    messageId = raw_input('Please enter     messageID > ')
+                                    unfavoriteMessage(chat.getConvID(), messageId)
+
                                 elif r2 == 'back':
                                     break
                                 elif r2 =='exit':
                                     return
                                 elif r2 == 'refresh':
-                                    getDM(base_url+'/direct_messages',user_id)
+                                    getDM(base_url+'/direct_messages',chat)
                                 elif r2:
                                     sendDM(r2,user_id)
                                 #except:
@@ -142,6 +157,7 @@ def displayOptions():
 	print "2) Send Message"
 	print "3) Chat with Group"
 	print "4) View chats"
+	print "5) Enter a chat"
 	print 'Type %s to quit' % colored("exit", 'red', attrs=['bold','blink'])
 	print "\n"
 
@@ -275,21 +291,45 @@ def getChats(base_url):
         other_user=User(other_user_name,other_user_id,other_user_url)
         last_message=resp["last_message"]["text"]
         last_sender=resp["last_message"]["name"]
-        newChat=Chat(created_at, updated_at, message_count, other_user,last_message,last_sender)
+        conv_id=resp["last_message"]["conversation_id"]
+        newChat=Chat(created_at, updated_at, message_count, other_user,last_message,last_sender,conv_id)
         chats.append(newChat)
     return chats
 
-def getDM(base_url,other_user_id):
+def getDM(base_url,chat):
     print "Fetching dm...\n"
-    req=requests.get(url=base_url+"?", params={'token':ACCESS_KEY,'other_user_id':other_user_id})
+    req=requests.get(url=base_url+"?", params={'token':ACCESS_KEY,'other_user_id':chat.getID()})
     data=json.loads(req.content)
     responses=data['response']
     dms=responses['direct_messages']
-    last5=dms[:5]
-    table=PrettyTable(["User","Message"])
-    for i in last5:
-        table.add_row([i["name"],i["text"]])
-    print table
+
+    dictCollection=[]
+    for dm in dms:
+        message={}
+        message['name']=dm['name']
+        message['text']=dm['text']
+        message['favorites']=dm['favorited_by']
+        message['id']=dm['id']
+        dictCollection.append(message)
+    heart = u'\u2764'
+    heart = colored(heart.encode('utf-8'),'red')
+
+
+    for messageDict in reversed(dictCollection):
+        if len(messageDict['favorites'])>0:
+            favs=messageDict['favorites']
+            if len(favs)>1:
+                print "%s: %s %s by %s" % (colored(messageDict['name'], 'yellow'), messageDict['text'], unicode(heart, 'utf-8'), "You, " + chat.showName())
+            elif favs[0]==chat.getID():
+                print "%s: %s %s by %s" % (colored(messageDict['name'], 'yellow'), messageDict['text'], unicode(heart, 'utf-8'), chat.showName())
+            else:
+                print "%s: %s %s by %s" % (colored(messageDict['name'], 'yellow'), messageDict['text'], unicode(heart, 'utf-8'), "You")
+            print "id: %s\n" % colored(messageDict['id'], 'cyan')
+        else:
+            print "%s: %s" % (colored(messageDict['name'], 'yellow'), messageDict['text'])
+            print "id: %s\n" % colored(messageDict['id'], 'cyan')
+
+
 
 
 
@@ -302,7 +342,7 @@ def sendDM(message,user_id):
 
         data=json.loads(requests.post(url=url,headers=headers, data=json.dumps(payload),params={'token':ACCESS_KEY}).content)
         body=data["response"]
-        if body["message"]:
+        if body["direct_message"]:
             print "Message sent"
     except:
         print "Failed to send"

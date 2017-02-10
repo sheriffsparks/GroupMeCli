@@ -1,12 +1,13 @@
 
 class Chat(object):
-    def __init__(self, created_at, updated_at, message_count, other_user, last_message,last_sender):
+    def __init__(self, created_at, updated_at, message_count, other_user, last_message,last_sender,conv_id):
         self.created_at=created_at
         self.updated_at=updated_at
         self.message_count = message_count
         self.other_user=other_user
         self.last_message=last_message
         self.last_sender=last_sender
+        self.conv_id=conv_id
     def showName(self):
         return self.other_user.nickname
     def getID(self):
@@ -17,4 +18,6 @@ class Chat(object):
         return self.last_message
     def showLastSender(self):
         return self.last_sender
+    def getConvID(self):
+        return self.conv_id
 
